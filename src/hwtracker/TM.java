@@ -76,21 +76,31 @@ public class TM {
 	}
 
 	static public class Describe implements Command{
-		String[] sizes = {"S", "M", "L", "XL"};
+		private String[] sizes = {"S", "M", "L", "XL"};
+		private String size = "N";
+		private int startIndex = 2;
+		private String entry;
+
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length < 3)
 				throw new BadCommandException();
-			String size = "N";
-			int startIndex = 2;
-			if (Arrays.asList(sizes).contains(args[2])) {
-				size = args[2];
+			getSize(args[2]);
+			createEntry(args);
+			writeToFile(entry, log);
+		}
+
+		private void getSize(String input) {
+			if (Arrays.asList(sizes).contains(input)) {
+				size = input;
 				startIndex = 3;
 			}
-			String entry = args[1] + " described " + size;
+		}
+
+		private void createEntry(String[] args) {
+			entry = args[1] + " described " + size;
 			for (int i = startIndex; i < args.length; i++)
 				entry += " " + args[i];
 			entry += "\n";
-			writeToFile(entry, log);
 		}
 	}
 
@@ -134,9 +144,8 @@ public class TM {
 
 	static public class Delete implements Command{
 		public void action(String[] args, File log) throws BadCommandException {
-			if (args.length < 2) {
+			if (args.length < 2)
 				throw new BadCommandException();
-			}
 			String entry = args[1] + " deleted" + "\n";
 			writeToFile(entry, log);
 		}
@@ -144,27 +153,27 @@ public class TM {
 	
 	public static void main(String[] args) {
 		if (args.length < 1) {
-
 			System.out.println("No command found");
 			return;
 		}
 		
-		File trackerLog = new File("TasktrackerLog.txt");
-		try {
-			if (trackerLog.createNewFile() == true)
-				System.out.println("File created");
-			else
-				System.out.println("File already exists");
-		} catch (IOException e) {
-			System.out.println("A file creation error has occurred.");
-		}
-
+		File trackerLog = getLog("TasktrackerLog.txt");
 		Command cc = getCommandClass(args[0]);
 		try {
 			cc.action(args, trackerLog);
-		} catch (BadCommandException e) {
+		} catch (Exception e) {
 			System.out.println("A bad command has been inputted.");
 		}
+	}
+
+	public static File getLog(String fileName) {
+		File log = new File(fileName);
+		try {
+			log.createNewFile();
+		} catch (IOException e) {
+			System.out.println("A file creation error has occurred.");
+		}
+		return log;
 	}
 
 	public static Command getCommandClass(String command) {
