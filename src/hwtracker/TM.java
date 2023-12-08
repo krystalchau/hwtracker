@@ -6,12 +6,10 @@ import java.io.FileWriter;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.HashMap;
-
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.time.temporal.*;
+import java.util.function.Consumer;
 
 public class TM {	
 	public static void main(String[] args) {
@@ -20,22 +18,10 @@ public class TM {
 			return;
 		}
 		try {
-			Command cc = Logger.getInstance().getCommandClass(args[0]);
-			cc.action(args);
+			Logger.getInstance().getCommandClass(args[0]).execute(args);
 		} catch (BadCommandException e) {
 			System.out.println("A bad command has been inputted.");
 		}
-	}
-
-	public static File getLog(String fileName) {
-		File log = new File(fileName);
-
-		try {
-			log.createNewFile();
-		} catch (IOException e) {
-			System.out.println("A file creation error has occurred.");
-		}
-		return log;
 	}
 }
 
@@ -46,12 +32,14 @@ class BadCommandException extends Exception {
 class Logger {
 	private static Logger logger;
 	private static File log;
+	private static HashMap<String, Command> classMap;
 	private Logger() {}
 
 	public static Logger getInstance() {
 		if (logger == null) {
 			logger = new Logger();
 			getLog("TaskTrackerLog.txt");
+			generateClassMap();
 		}
 		return logger;
 	}
@@ -65,18 +53,22 @@ class Logger {
 		}
 	}
 
+	private static void generateClassMap() {
+		classMap = new HashMap<>();
+		classMap.put("start", new Start());
+		classMap.put("stop", new Stop());
+		classMap.put("describe", new Describe());
+		classMap.put("summary", new Summary());
+		classMap.put("size", new Size());
+		classMap.put("rename", new Rename());
+		classMap.put("delete", new Delete());
+	}
+
 	public Command getCommandClass(String command) throws BadCommandException {
-		switch (command) {
-			case "start": return new Start();
-			case "stop": return new Stop();
-			case "describe": return new Describe();
-			case "summary": return new Summary();
-			case "size": return new Size();
-			case "rename": return new Rename();
-			case "delete": return new Delete();
-			default:
-				throw new BadCommandException();
-		}
+		Command commandClass = classMap.get(command);
+		if (commandClass == null)
+			throw new BadCommandException();
+		return commandClass;
 	}
 
 	public void writeToFile(String entry) {
@@ -101,56 +93,54 @@ class Logger {
 }
 
 interface Command {
-	public void action(String[] args) throws BadCommandException;
+	public void execute(String[] args) throws BadCommandException;
 }
 
 class Start implements Command {
-	public void action(String[] args) throws BadCommandException {
-		if (args.length < 2 || !canStart())
+	public void execute(String[] args) throws BadCommandException {
+		if (args.length < 2 || canStart())
 			throw new BadCommandException();
-		String entry = "start " + args[1] + " " + LocalTime.now() + "\n";
+		String entry = "start " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canStart() {
 		int start = -1, stop = 0, i = 0;
-		String line;
 		Scanner scanner = Logger.getInstance().getFileReader();
 		while (scanner.hasNextLine()) {
-				line = scanner.nextLine();
-				if (line.contains("start"))
+				String[] line = Util.getWords(scanner.nextLine());
+				if (line[0].equals("start"))
 					start = i;
-				if (line.contains("stop"))
+				if (line[0].equals("stop"))
 					stop = i;
 				i++;
 			}
 			scanner.close();
-		return (start < stop);
+		return (start > stop);
 	}
 }
 
 class Stop implements Command {
-	public void action(String[] args) throws BadCommandException {
-		if (args.length < 2 || !canStop(args[1]))
+	public void execute(String[] args) throws BadCommandException {
+		if (args.length < 2 || canStop(args[1]))
 			throw new BadCommandException();
-		String entry = "stop " + args[1] + " " + LocalTime.now() + "\n";
+		String entry = "stop " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canStop(String taskName) {
 		int start = 0, stop = -1, i = 0;
-		String line;
 		Scanner scanner = Logger.getInstance().getFileReader();
 		while (scanner.hasNextLine()) {
-			line = scanner.nextLine();
-			if (line.contains(taskName) && line.contains("start"))
+			String[] line = Util.getWords(scanner.nextLine());
+			if (line[1].equals(taskName) && line[0].equals("start"))
 				start = i;
-			if (line.contains("stop"))
+			if (line[0].equals("stop"))
 				stop = i;
 			i++;
 		}
 		scanner.close();
-		return (stop < start);
+		return (stop > start);
 	}
 }
 
@@ -158,7 +148,7 @@ class Describe implements Command {
 	private String[] sizes = {"S", "M", "L", "XL"};
 	private String size = "N";
 	
-	public void action(String[] args) throws BadCommandException {
+	public void execute(String[] args) throws BadCommandException {
 		if (args.length < 3)
 			throw new BadCommandException();
 		if (args.length > 3)
@@ -172,108 +162,163 @@ class Describe implements Command {
 }
 
 class Summary implements Command {
-	String[] sizes = {"S", "M", "L", "XL"};
-	List<String> taskList = new ArrayList<String>();
-	HashMap<String, String> descriptionMap = new HashMap<>();
-	HashMap<String, Integer> timeMap = new HashMap<>();
-	HashMap<String, String> sizeMap = new HashMap<>();
+	public class TaskData {
+		String size = "Not Set";
+		String description = "Not Set";
+		int time = 0;
+	}
 
-	public void action(String[] args) throws BadCommandException {
+	private String[] sizes = {"S", "M", "L", "XL"};
+	private String[] startLine = null;
+	private HashMap<String, TaskData> taskMap = new HashMap<>();
+	private HashMap<String, Consumer<String[]>> parseMap;
+
+	public void execute(String[] args) throws BadCommandException {
+		if (parseMap == null)
+			generateParseMap();
 		parseLog();
 		if (args.length > 1) {
 			if (Arrays.asList(sizes).contains(args[1])) {
 				System.out.println("Summary for size: " + args[1]);
 				String inputSize = args[1];
-				sizeMap.forEach((task, size) -> {
-					if (size.equals(inputSize)) {
-						printOut(task, descriptionMap.get(task), timeMap.get(task));
+				taskMap.forEach((task, data) -> {
+					if (data.size.equals(inputSize)) {
+						printOut(task, data.size, data.description, data.time);
 					}
 				});
 		}
 			else {
 				System.out.println("Summary for task: " + args[1]);
 				String inputTask = args[1];
-				taskList.forEach((task) -> {
+				taskMap.forEach((task, data) -> {
 					if (task.equals(inputTask)) {
-						printOut(task, descriptionMap.get(task), timeMap.get(task));
+						printOut(task, data.size, data.description, data.time);
 					}
 				});
 			}
 		}
 		else {
 			System.out.println("Full Summary");
-			taskList.forEach(task -> {
-				printOut(task, descriptionMap.get(task), timeMap.get(task));
+			taskMap.forEach((task, data) -> {
+				printOut(task, data.size, data.description, data.time);
 			});
 		}
 	}
-
+	private void generateParseMap() {
+			parseMap = new HashMap<>();
+			parseMap.put("start", s -> parseStart(s));
+			parseMap.put("stop", s -> parseStop(s));
+			parseMap.put("describe", s -> parseDescribe(s));
+			parseMap.put("size", s -> parseSize(s));
+			parseMap.put("rename", s -> parseRename(s));
+			parseMap.put("delete", s -> parseDelete(s));
+		}
+	
 	private void parseLog() {
 		Scanner scanner = Logger.getInstance().getFileReader();
-		String[] line;
-		String taskName = null, startedTask = null;
-		String command;
-		LocalTime startTime = null;
 
 		while (scanner.hasNextLine()) {
-			line = Util.getWords(scanner.nextLine());
-			command = line[0];
-			taskName = line[1];
-			switch (command) {
-				case "start":
-					startTime = LocalTime.parse(line[2]);
-					startedTask = taskName;
-					if (!taskList.contains(taskName)) { taskList.add(taskName); }
-					if (descriptionMap.get(taskName) == null) { descriptionMap.put(taskName, ""); }
-					break;
-				case "stop":
-					if (startedTask.equals(taskName)) { 
-						timeMap.put(taskName, (int)startTime.until(LocalTime.parse(line[2]), ChronoUnit.SECONDS)); }
-					break;
-				case "describe":
-					if (!line[2].equals("N") && Arrays.asList(sizes).contains(line[2])) { sizeMap.put(taskName, line[2]); }
-					String description = "";
-					for (String word : Arrays.copyOfRange(line, 3, line.length))
-						{ description += word; }
-					descriptionMap.put(taskName, description);
-					break;
-				case "size":
-					sizeMap.put(taskName, line[2]);
-					break;
-				case "rename":
-					// NEED TO DO ERROR CHECKING IF NAME IN LISTS/MAPS
-					String newName = line[2];
-					taskList.remove(taskName);
-					taskList.add(newName);
-					descriptionMap.put(newName, descriptionMap.remove(taskName));
-					timeMap.put(newName, timeMap.remove(taskName));
-					sizeMap.put(newName, sizeMap.remove(taskName));
-					break;
-				case "delete":
-					taskList.remove(taskName);
-					descriptionMap.remove(taskName);
-					timeMap.remove(taskName);
-					sizeMap.remove(taskName);
-					break;
-				default:
-					break;
-			}
+			String[] line = Util.getWords(scanner.nextLine());
+			parseMap.get(line[0]).accept(line);
 		}
 	}
 
-	private void printOut(String task, String description, int seconds) {
+	private void generateTask(String taskName){
+		if (!taskMap.containsKey(taskName))
+				taskMap.put(taskName, new TaskData());
+	}
+
+	private void parseStart(String[] line) {
+		if (line.length < 3) {
+			System.err.println("Malformed Start");
+			return;
+		}
+		generateTask(line[1]);
+		startLine = line;
+	}
+
+	private void parseStop(String[] endLine) {
+		String startTask = startLine[1], endTask = endLine[1];
+		if (startLine.length < 3 || endLine.length < 3 || !startTask.equals(endTask) || !taskMap.containsKey(endTask)) {
+			System.err.println("malformed stop");
+			return;
+		}
+		TaskData data = taskMap.get(startTask);
+		LocalDateTime startTime = LocalDateTime.parse(startLine[2]), endTime = LocalDateTime.parse(endLine[2]);
+		int timeDelta = (int)startTime.until(endTime, ChronoUnit.SECONDS);
+		if (timeDelta < 0) {
+			System.err.println("Malformed Start/Stop");
+			return;
+		}
+		data.time = timeDelta;
+		taskMap.put(startTask, data);
+	}
+
+	private void parseDescribe(String[] line) {
+		if (line.length < 4) {
+			System.err.println("Malformed Describe");
+			return;
+		}
+		String taskName = line[1];
+		if (!taskMap.containsKey(taskName))
+			generateTask(taskName);
+		TaskData data = taskMap.get(taskName);
+		parseSize(line);
+		data.description = line[3];
+		for (String word : Arrays.copyOfRange(line, 4, line.length))
+			data.description += " " + word;
+		taskMap.put(taskName, data);
+	}
+
+	private void parseSize(String[] line) {
+		if (line.length < 3){
+			System.err.println("Malformed Size");
+			return;
+		}
+		String taskName = line[1];
+		if (!taskMap.containsKey(taskName))
+			generateTask(taskName);
+		TaskData data = taskMap.get(taskName);
+		String size = line[2];
+		if (Arrays.asList(sizes).contains(size)) {
+			data.size = size;
+		}
+		else if (!size.equals("N"))
+			System.err.println("Malformed Size");
+		taskMap.put(taskName, data);
+	}
+
+	private void parseRename(String[] line) {
+		String oldName = line[1], newName = line[2];
+		if (line.length < 3 || !taskMap.containsKey(oldName)) {
+			System.err.println("Malformed Rename");
+			return;
+		}
+			taskMap.put(newName, taskMap.remove(oldName));
+	}
+
+	private void parseDelete(String[] line) {
+		if (line.length < 2) {
+			System.err.println("Malformed Delete");
+			return;
+		}
+		String taskName = line[1];
+		taskMap.remove(taskName);
+	}
+
+	private void printOut(String task, String size, String description, int seconds) {
 		int[] time = Util.convertSecondsToTime(seconds);
  		System.out.println("Summary for size\t:" + task);
+		System.out.println("Size of task\t\t:" + size);
 		System.out.println("Description\t\t:" + description);
-		System.out.println("Time spent on task\t:" + time[0] + ":" + time[1] + ":" + time[2]);
-		System.out.println("");
+		System.out.println("Time spent on task\t:" + time[0] + ":" + time[1] + ":" + time[2] + "\n");
 	}
 }
 
 class Size implements Command {
 	String[] sizes = {"S", "M", "L", "XL"};
 
-	public void action(String[] args) throws BadCommandException {
+	public void execute(String[] args) throws BadCommandException {
 		if (args.length < 3 || !Arrays.asList(sizes).contains(args[2]))
 			throw new BadCommandException();
 		else {
@@ -284,7 +329,7 @@ class Size implements Command {
 }
 
 class Rename implements Command {
-	public void action(String[] args) throws BadCommandException {
+	public void execute(String[] args) throws BadCommandException {
 		if (args.length < 3)
 			throw new BadCommandException();
 		String entry = "rename " + args[1] + " " + args[2] + "\n";
@@ -293,11 +338,26 @@ class Rename implements Command {
 }
 
 class Delete implements Command {
-	public void action(String[] args) throws BadCommandException {
-		if (args.length < 2)
+	public void execute(String[] args) throws BadCommandException {
+		if (args.length < 2 && canDelete())
 			throw new BadCommandException();
 		String entry = "delete " + args[1] + "\n";
 		Logger.getInstance().writeToFile(entry);
+	}
+
+	private boolean canDelete() {
+		int start = 0, stop = -1, i = 0;
+		Scanner scanner = Logger.getInstance().getFileReader();
+		while (scanner.hasNextLine()) {
+			String[] line = Util.getWords(scanner.nextLine());
+			if (line[0].equals("start"))
+				start = i;
+			if (line[0].equals("stop"))
+				stop = i;
+			i++;
+		}
+		scanner.close();
+		return (stop > start);
 	}
 }
 
@@ -305,6 +365,7 @@ class Util {
 	public static String[] getWords(String string) {
 		return string.split("\\s+");
 	}
+	
 	public static int[] convertSecondsToTime(int seconds) {
 		int hours = seconds / 3600;
 		int minutes = seconds % 3600 / 60;

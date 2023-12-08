@@ -1,19 +1,13 @@
-13:13:17.140507 foo start
-13:17:53.713664 foo stop
-size foo S
-rename foo fi
-delete fi
-13:30:03.745449 boop start
-13:30:12.949858 boop stop
-describe boop boppity S
-describe boop boppity M
-size boop S
-rename boop bop
-delete boop
-13:34:10.913266 bop start
-13:34:34.697159 bop stop
-13:34:37.925202 boop start
-13:35:22.986482 boop stop
-delete bop
-describe boop hello world a b c d e f S
-describe boop hello world a b c d e f N
+start start 2023-12-07T09:21:38.511060
+stop start 2023-12-08T09:21:43.445874
+start stop 2023-12-08T09:22:15.555801
+stop stop 2023-12-08T09:22:20.753440
+start buh 2023-12-08T09:22:33.427384
+stop buh 2023-12-08T09:22:39.774101
+describe buh N hello world
+start b 2023-12-08T09:30:54.662578
+describe buh M hi
+stop b 2023-12-08T13:06:50.969665
+size buh S
+size bu S
+start new 2023-12-08T13:26:18.166066
