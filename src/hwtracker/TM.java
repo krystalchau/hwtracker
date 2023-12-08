@@ -53,7 +53,7 @@ class Logger {
 		try {
 			log.createNewFile();
 		} catch (IOException e) {
-			System.err.println("A file creation error has occurred.");
+			System.out.println("A file creation error has occurred.");
 		}
 	}
 
@@ -81,8 +81,18 @@ class Logger {
 			fw.write(entry);
 			fw.close();
 		} catch (IOException e) {
-			System.err.println("A write error has occurred.");
+			System.out.println("A write error has occurred.");
 		}
+	}
+
+	public Scanner getFileReader() {
+		Scanner scanner = null;
+		try {
+			scanner = new Scanner(log);
+		} catch (FileNotFoundException e) {
+			System.out.println("A read error has occurred.");
+		}
+		return scanner;
 	}
 
 	public Stream<String> getFileStream() {
@@ -117,23 +127,25 @@ class Start implements Command {
 
 class Stop implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 2 || !canStop(args[1]))
+		if (args.length < 2 || canStop(args[1]))
 			throw new BadCommandException();
 		String entry = "stop " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canStop(String taskName) {
-		Map<String, Long> countMap = Logger.getInstance().getFileStream().map(Util::getWords).filter(line -> canStopHelper(line, taskName)).collect(Collectors.groupingBy(Util::getCommand, Collectors.counting()));
-		return (countMap.getOrDefault("start", 0L) <= countMap.getOrDefault("stop", 0L));
-	}
-
-	private boolean canStopHelper(String[] line, String taskName) {
-		if (line[1].equals(taskName) && line[0].equals("start"))
-			return true;
-		if (line[0].equals("stop"))
-			return true;
-		return false;
+		int start = 0, stop = -1, i = 0;
+		Scanner scanner = Logger.getInstance().getFileReader();
+		while (scanner.hasNextLine()) {
+			String[] line = Util.getWords(scanner.nextLine());
+			if (line[1].equals(taskName) && line[0].equals("start"))
+				start = i;
+			if (line[0].equals("stop"))
+				stop = i;
+			i++;
+		}
+		scanner.close();
+		return (stop > start);
 	}
 }
 

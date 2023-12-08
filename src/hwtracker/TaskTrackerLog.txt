@@ -12,3 +12,7 @@ size buh S
 size bu S
 start new 2023-12-08T13:26:18.166066
 stop a 2023-12-08T14:56:10.180408
+delete a
+start a 2023-12-08T15:00:05.849835
+stop a 2023-12-08T15:24:15.746921
+delete a
