@@ -53,7 +53,7 @@ class Logger {
 		try {
 			log.createNewFile();
 		} catch (IOException e) {
-			System.out.println("A file creation error has occurred.");
+			System.err.println("A file creation error has occurred.");
 		}
 	}
 
@@ -81,18 +81,8 @@ class Logger {
 			fw.write(entry);
 			fw.close();
 		} catch (IOException e) {
-			System.out.println("A write error has occurred.");
+			System.err.println("A write error has occurred.");
 		}
-	}
-
-	public Scanner getFileReader() {
-		Scanner scanner = null;
-		try {
-			scanner = new Scanner(log);
-		} catch (FileNotFoundException e) {
-			System.out.println("A read error has occurred.");
-		}
-		return scanner;
 	}
 
 	public Stream<String> getFileStream() {
@@ -139,7 +129,6 @@ class Stop implements Command {
 	}
 
 	private boolean canStopHelper(String[] line, String taskName) {
-		System.err.println(line[0]);
 		if (line[1].equals(taskName) && line[0].equals("start"))
 			return true;
 		if (line[0].equals("stop"))
@@ -346,18 +335,8 @@ class Delete implements Command {
 	}
 
 	private boolean canDelete() {
-		int start = 0, stop = -1, i = 0;
-		Scanner scanner = Logger.getInstance().getFileReader();
-		while (scanner.hasNextLine()) {
-			String[] line = Util.getWords(scanner.nextLine());
-			if (line[0].equals("start"))
-				start = i;
-			if (line[0].equals("stop"))
-				stop = i;
-			i++;
-		}
-		scanner.close();
-		return (stop > start);
+		Map<String, Long> countMap = Logger.getInstance().getFileStream().map(Util::getWords).collect(Collectors.groupingBy(Util::getCommand, Collectors.counting()));
+		return (countMap.getOrDefault("start", 0L) <= countMap.getOrDefault("stop", 0L));
 	}
 }
 
