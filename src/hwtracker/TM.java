@@ -9,6 +9,9 @@ import java.util.Arrays;
 import java.time.LocalTime; 
 
 public class TM {
+
+	static String LOG_FILE_NAME = "TasktrackerLog.txt";
+
 	static class BadCommandException extends Exception {
 		BadCommandException() {}
 	}
@@ -17,7 +20,7 @@ public class TM {
 		public void action(String[] args, File log) throws BadCommandException;
 	}
 
-	static public class Start implements Command{
+	static public class Start implements Command {
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length < 2 || !canStart(log))
 				throw new BadCommandException();
@@ -28,6 +31,7 @@ public class TM {
 		private boolean canStart(File log) {
 			int start = 0, stop = 0, i = 0;
 			String line;
+			
 			try {
 				Scanner scanner = new Scanner(log);
 				while (scanner.hasNextLine()) {
@@ -39,14 +43,14 @@ public class TM {
 					i++;
 				}
 				scanner.close();
-			} catch (Exception e){
+			} catch (Exception e) {
 				System.out.println("A read error has occurred.");
 			}
 			return (start < stop);
 		}
 	}
 
-	static public class Stop implements Command{
+	static public class Stop implements Command {
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length < 2 || !canStop(log, args[1]))
 				throw new BadCommandException();
@@ -57,6 +61,7 @@ public class TM {
 		private boolean canStop(File log, String taskName) {
 			int start = 0, stop = 0, i = 0;
 			String line;
+
 			try {
 				Scanner scanner = new Scanner(log);
 				while (scanner.hasNextLine()) {
@@ -68,14 +73,14 @@ public class TM {
 					i++;
 				}
 				scanner.close();
-			} catch (Exception e){
+			} catch (Exception e) {
 				System.out.println("A read error has occurred.");
 			}
 			return (stop < start);
 		}
 	}
 
-	static public class Describe implements Command{
+	static public class Describe implements Command {
 		private String[] sizes = {"S", "M", "L", "XL"};
 		private String size = "N";
 		private int startIndex = 2;
@@ -104,8 +109,9 @@ public class TM {
 		}
 	}
 
-	static public class Summary implements Command{
+	static public class Summary implements Command {
 		String[] sizes = {"S", "M", "L", "XL"};
+
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length > 1) {
 				if (Arrays.asList(sizes).contains(args[2])) {
@@ -121,8 +127,9 @@ public class TM {
 		}
 	}
 
-	static public class Size implements Command{
+	static public class Size implements Command {
 		String[] sizes = {"S", "M", "L", "XL"};
+
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length < 3 || !Arrays.asList(sizes).contains(args[2]))
 				throw new BadCommandException();
@@ -133,7 +140,7 @@ public class TM {
 		}
 	}
 
-	static public class Rename implements Command{
+	static public class Rename implements Command {
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length < 3)
 				throw new BadCommandException();
@@ -142,7 +149,7 @@ public class TM {
 		}
 	}
 
-	static public class Delete implements Command{
+	static public class Delete implements Command {
 		public void action(String[] args, File log) throws BadCommandException {
 			if (args.length < 2)
 				throw new BadCommandException();
@@ -157,8 +164,9 @@ public class TM {
 			return;
 		}
 		
-		File trackerLog = getLog("TasktrackerLog.txt");
+		File trackerLog = getLog(LOG_FILE_NAME);
 		Command cc = getCommandClass(args[0]);
+
 		try {
 			cc.action(args, trackerLog);
 		} catch (Exception e) {
@@ -168,6 +176,7 @@ public class TM {
 
 	public static File getLog(String fileName) {
 		File log = new File(fileName);
+
 		try {
 			log.createNewFile();
 		} catch (IOException e) {
