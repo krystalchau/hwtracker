@@ -3,10 +3,14 @@ package hwtracker;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.nio.file.Files;
+import java.util.stream.Stream;
+import java.util.stream.Collectors;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.temporal.*;
 import java.util.function.Consumer;
@@ -32,7 +36,7 @@ class BadCommandException extends Exception {
 class Logger {
 	private static Logger logger;
 	private static File log;
-	private static HashMap<String, Command> classMap;
+	private static Map<String, Command> classMap;
 	private Logger() {}
 
 	public static Logger getInstance() {
@@ -90,6 +94,17 @@ class Logger {
 		}
 		return scanner;
 	}
+
+	public Stream<String> getFileStream() {
+		try {
+			Stream<String> stream = Files.lines(log.toPath());
+			return stream;
+		}
+		catch (IOException e) {
+			System.err.println("Read error");
+			return null;
+		}
+	}
 }
 
 interface Command {
@@ -98,49 +113,38 @@ interface Command {
 
 class Start implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 2 || canStart())
+		if (args.length < 2 || !canStart())
 			throw new BadCommandException();
 		String entry = "start " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canStart() {
-		int start = -1, stop = 0, i = 0;
-		Scanner scanner = Logger.getInstance().getFileReader();
-		while (scanner.hasNextLine()) {
-				String[] line = Util.getWords(scanner.nextLine());
-				if (line[0].equals("start"))
-					start = i;
-				if (line[0].equals("stop"))
-					stop = i;
-				i++;
-			}
-			scanner.close();
-		return (start > stop);
+		Map<String, Long> countMap = Logger.getInstance().getFileStream().map(Util::getWords).collect(Collectors.groupingBy(Util::getCommand, Collectors.counting()));
+		return (countMap.getOrDefault("start", 0L) <= countMap.getOrDefault("stop", 0L));
 	}
 }
 
 class Stop implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 2 || canStop(args[1]))
+		if (args.length < 2 || !canStop(args[1]))
 			throw new BadCommandException();
 		String entry = "stop " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canStop(String taskName) {
-		int start = 0, stop = -1, i = 0;
-		Scanner scanner = Logger.getInstance().getFileReader();
-		while (scanner.hasNextLine()) {
-			String[] line = Util.getWords(scanner.nextLine());
-			if (line[1].equals(taskName) && line[0].equals("start"))
-				start = i;
-			if (line[0].equals("stop"))
-				stop = i;
-			i++;
-		}
-		scanner.close();
-		return (stop > start);
+		Map<String, Long> countMap = Logger.getInstance().getFileStream().map(Util::getWords).filter(line -> canStopHelper(line, taskName)).collect(Collectors.groupingBy(Util::getCommand, Collectors.counting()));
+		return (countMap.getOrDefault("start", 0L) <= countMap.getOrDefault("stop", 0L));
+	}
+
+	private boolean canStopHelper(String[] line, String taskName) {
+		System.err.println(line[0]);
+		if (line[1].equals(taskName) && line[0].equals("start"))
+			return true;
+		if (line[0].equals("stop"))
+			return true;
+		return false;
 	}
 }
 
@@ -170,8 +174,8 @@ class Summary implements Command {
 
 	private String[] sizes = {"S", "M", "L", "XL"};
 	private String[] startLine = null;
-	private HashMap<String, TaskData> taskMap = new HashMap<>();
-	private HashMap<String, Consumer<String[]>> parseMap;
+	private Map<String, TaskData> taskMap;
+	private Map<String, Consumer<String[]>> parseMap;
 
 	public void execute(String[] args) throws BadCommandException {
 		if (parseMap == null)
@@ -215,12 +219,8 @@ class Summary implements Command {
 		}
 	
 	private void parseLog() {
-		Scanner scanner = Logger.getInstance().getFileReader();
-
-		while (scanner.hasNextLine()) {
-			String[] line = Util.getWords(scanner.nextLine());
-			parseMap.get(line[0]).accept(line);
-		}
+		taskMap = new HashMap<>();
+		Logger.getInstance().getFileStream().map(Util::getWords).forEach(line -> parseMap.get(line[0]).accept(line));
 	}
 
 	private void generateTask(String taskName){
@@ -365,11 +365,15 @@ class Util {
 	public static String[] getWords(String string) {
 		return string.split("\\s+");
 	}
-	
+
 	public static int[] convertSecondsToTime(int seconds) {
 		int hours = seconds / 3600;
 		int minutes = seconds % 3600 / 60;
 		seconds = seconds % 60;
 		return new int[] { hours, minutes, seconds };
+	}
+
+	public static String getCommand(String[] line) {
+		return line[0];
 	}
 }
