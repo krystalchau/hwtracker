@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.util.stream.Stream;
-import java.util.stream.Collectors;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.Arrays;
@@ -14,6 +13,7 @@ import java.util.Map;
 import java.time.LocalDateTime;
 import java.time.temporal.*;
 import java.util.function.Consumer;
+import java.time.format.DateTimeParseException;
 
 public class TM {	
 	public static void main(String[] args) {
@@ -198,29 +198,14 @@ class Summary implements Command {
 		parseLog();
 		if (args.length > 1) {
 			if (Arrays.asList(sizes).contains(args[1])) {
-				System.out.println("Summary for size: " + args[1]);
-				String inputSize = args[1];
-				taskMap.forEach((task, data) -> {
-					if (data.size.equals(inputSize)) {
-						printOut(task, data.size, data.description, data.time);
-					}
-				});
+				printOutputWithSize(args[1]);
 			}
 			else {
-				System.out.println("Summary for task: " + args[1]);
-				String inputTask = args[1];
-				taskMap.forEach((task, data) -> {
-					if (task.equals(inputTask)) {
-						printOut(task, data.size, data.description, data.time);
-					}
-				});
+				printOutputWithName(args[1]);
 			}
 		}
 		else {
-			System.out.println("Full Summary");
-			taskMap.forEach((task, data) -> {
-				printOut(task, data.size, data.description, data.time);
-			});
+			printOutputAll();
 		}
 	}
 
@@ -244,6 +229,31 @@ class Summary implements Command {
 			});
 	}
 
+	private void printOutputWithSize(String size) {
+	System.out.println("Summary for size: " + size);
+			taskMap.forEach((task, data) -> {
+				if (data.size.equals(size)) {
+					printOut(task, data.size, data.description, data.time);
+				}
+			});
+	}
+
+	private void printOutputWithName(String name) {
+	System.out.println("Summary for task: " + name);
+		taskMap.forEach((task, data) -> {
+			if (task.equals(name)) {
+				printOut(task, data.size, data.description, data.time);
+			}
+		});
+	}
+
+	private void printOutputAll() {
+		System.out.println("Full Summary");
+		taskMap.forEach((task, data) -> {
+			printOut(task, data.size, data.description, data.time);
+		});
+	}
+
 	private void generateTask(String taskName){
 		if (!taskMap.containsKey(taskName))
 				taskMap.put(taskName, new TaskData());
@@ -260,26 +270,32 @@ class Summary implements Command {
 
 	private void parseStop(String[] endLine) {
 		if (startLine == null || startLine.length < 3 || endLine.length < 3) {
-			System.err.println("malformed stop");
+			System.err.println("Malformed Stop");
 			return;
 		}
 
 		String startTask = startLine[1], endTask = endLine[1];
 		if (!startTask.equals(endTask) || !taskMap.containsKey(endTask)) {
-			System.err.println("malformed stop");
+			System.err.println("Malformed Stop");
 			return;
 		}
 		
 		TaskData data = taskMap.get(startTask);
-		LocalDateTime startTime = LocalDateTime.parse(startLine[2]);
-		LocalDateTime endTime = LocalDateTime.parse(endLine[2]);
-		int timeDelta = (int)startTime.until(endTime, ChronoUnit.SECONDS);
-		if (timeDelta < 0) {
-			System.err.println("Malformed Start/Stop");
+		try {
+			LocalDateTime startTime = LocalDateTime.parse(startLine[2]);
+			LocalDateTime endTime = LocalDateTime.parse(endLine[2]);
+			int timeDelta = (int)startTime.until(endTime, ChronoUnit.SECONDS);
+			if (timeDelta < 0 || LocalDateTime.now().until(startTime, ChronoUnit.SECONDS) > 0 || LocalDateTime.now().until(endTime, ChronoUnit.SECONDS) < 0) {
+				System.err.println("Malformed Start/Stop");
+				return;
+			}
+			data.time = timeDelta;
+			taskMap.put(startTask, data);
+		}
+		catch (DateTimeParseException e) {
+			System.err.println("Malformed Date and Time");
 			return;
 		}
-		data.time = timeDelta;
-		taskMap.put(startTask, data);
 	}
 
 	private void parseDescribe(String[] line) {
