@@ -221,7 +221,11 @@ class Summary implements Command {
 	
 	private void parseLog() {
 		taskMap = new HashMap<>();
-		Logger.getInstance().getFileStream().map(Util::getWords).forEach(line -> parseMap.get(line[0]).accept(line));
+		Logger.getInstance().getFileStream().map(Util::getWords).forEach(line -> {
+			if (parseMap.get(line[0]) == null)
+				return;
+			parseMap.get(line[0]).accept(line);
+		});
 	}
 
 	private void generateTask(String taskName){
@@ -239,8 +243,12 @@ class Summary implements Command {
 	}
 
 	private void parseStop(String[] endLine) {
+		if (startLine == null || startLine.length < 3 || endLine.length < 3) {
+			System.err.println("malformed stop");
+			return;
+		}
 		String startTask = startLine[1], endTask = endLine[1];
-		if (startLine.length < 3 || endLine.length < 3 || !startTask.equals(endTask) || !taskMap.containsKey(endTask)) {
+		if (!startTask.equals(endTask) || !taskMap.containsKey(endTask)) {
 			System.err.println("malformed stop");
 			return;
 		}
@@ -340,7 +348,7 @@ class Rename implements Command {
 
 class Delete implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 2 && canDelete())
+		if (args.length < 2 || !canDelete())
 			throw new BadCommandException();
 		String entry = "delete " + args[1] + "\n";
 		Logger.getInstance().writeToFile(entry);

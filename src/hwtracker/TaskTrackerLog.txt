@@ -1,6 +1,7 @@
-start start 2023-12-07T09:21:38.511060
 stop start 2023-12-08T09:21:43.445874
 start stop 2023-12-08T09:22:15.555801
+asdfasdfadsf
+
 stop stop 2023-12-08T09:22:20.753440
 start buh 2023-12-08T09:22:33.427384
 stop buh 2023-12-08T09:22:39.774101
@@ -12,7 +13,3 @@ size buh S
 size bu S
 start new 2023-12-08T13:26:18.166066
 stop a 2023-12-08T14:56:10.180408
-delete a
-start a 2023-12-08T15:00:05.849835
-stop a 2023-12-08T15:24:15.746921
-delete a
