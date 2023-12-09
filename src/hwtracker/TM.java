@@ -123,13 +123,12 @@ class Start implements Command {
 
 	private boolean canStart() {
 		int start = -1, stop = 0, i = 0;
-			String line;
 			Scanner scanner = Logger.getInstance().getFileReader();
 			while (scanner.hasNextLine()) {
-					line = scanner.nextLine();
-					if (line.contains("start"))
+					String[] line = Util.getWords(scanner.nextLine());
+					if (line[0].equals("start"))
 						start = i;
-					if (line.contains("stop"))
+					if (line[0].equals("stop"))
 						stop = i;
 					i++;
 				}
@@ -151,7 +150,7 @@ class Stop implements Command {
 		Scanner scanner = Logger.getInstance().getFileReader();
 		while (scanner.hasNextLine()) {
 			String[] line = Util.getWords(scanner.nextLine());
-			if (line[1].equals(taskName) && line[0].equals("start"))
+			if (line[0].equals("start") && line[1].equals(taskName))
 				start = i;
 			if (line[0].equals("stop"))
 				stop = i;
@@ -242,7 +241,7 @@ class Summary implements Command {
 				}
 			});
 			if (name == null)
-				printAvgSpentTime();
+				printAvgSpentTime(size);
 	}
 
 	private boolean printFilter(String size, String name, String task, TaskData data) {
@@ -252,15 +251,15 @@ class Summary implements Command {
 				);
 	}
 	
-	private void printAvgSpentTime() {
+	private void printAvgSpentTime(String size) {
 		Map<String, List<TaskData>> sortedBySizeMap = taskMap.values().stream().collect(Collectors.groupingBy(TaskData::size));
-		sortedBySizeMap.forEach((size, dataList) -> {
-			if (dataList.size() > 1 && Arrays.asList(sizes).contains(size)) {
+		sortedBySizeMap.forEach((dataSize, dataList) -> {
+			if (dataList.size() > 1 && Arrays.asList(sizes).contains(dataSize) && (size == null || dataSize.equals(size))) {
 				List<Integer> timeList = dataList.stream().map(data -> data.time).toList();
 				int[] min = Util.convertSecondsToTime(timeList.stream().min(Integer::compare).get());
 				int[] max = Util.convertSecondsToTime(timeList.stream().max(Integer::compare).get());
 				int[] avg = Util.convertSecondsToTime((int)timeList.stream().mapToDouble(i -> i).average().orElse(0));
-				System.out.println("Time Statistics for Size " + size);
+				System.out.println("Time Statistics for Size " + dataSize);
 				System.out.println("Min: " + Util.formatTime(min) + "\tMax: " + Util.formatTime(max) + "\tAvg: " + Util.formatTime(avg) + "\n");
 
 			}
