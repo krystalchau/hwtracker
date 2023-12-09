@@ -120,8 +120,12 @@ class Start implements Command {
 	}
 
 	private boolean canStart() {
-		Map<String, Long> countMap = Logger.getInstance().getFileStream().map(Util::getWords).collect(Collectors.groupingBy(Util::getCommand, Collectors.counting()));
-		return (countMap.getOrDefault("start", 0L) <= countMap.getOrDefault("stop", 0L));
+		Map<String, Long> countMap = Logger.getInstance()
+					.getFileStream().map(Util::getWords)
+					.collect(Collectors.groupingBy(Util::getCommand, 
+													Collectors.counting()));
+		return (countMap.getOrDefault("start", 0L) 
+				<= countMap.getOrDefault("stop", 0L));
 	}
 }
 
@@ -156,12 +160,14 @@ class Describe implements Command {
 	public void execute(String[] args) throws BadCommandException {
 		if (args.length < 3)
 			throw new BadCommandException();
+			
 		if (args.length > 3)
 			if (!Arrays.asList(sizes).contains(args[3]))
 				throw new BadCommandException();
 			else
 				size = args[3];
-		String entry = "describe " + args[1] + " " + size + " " + args[2] + "\n";
+		String entry = "describe " + args[1] + " " 
+						+ size + " " + args[2] + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 }
@@ -181,6 +187,7 @@ class Summary implements Command {
 	public void execute(String[] args) throws BadCommandException {
 		if (parseMap == null)
 			generateParseMap();
+
 		parseLog();
 		if (args.length > 1) {
 			if (Arrays.asList(sizes).contains(args[1])) {
@@ -191,7 +198,7 @@ class Summary implements Command {
 						printOut(task, data.size, data.description, data.time);
 					}
 				});
-		}
+			}
 			else {
 				System.out.println("Summary for task: " + args[1]);
 				String inputTask = args[1];
@@ -209,23 +216,25 @@ class Summary implements Command {
 			});
 		}
 	}
+
 	private void generateParseMap() {
-			parseMap = new HashMap<>();
-			parseMap.put("start", s -> parseStart(s));
-			parseMap.put("stop", s -> parseStop(s));
-			parseMap.put("describe", s -> parseDescribe(s));
-			parseMap.put("size", s -> parseSize(s));
-			parseMap.put("rename", s -> parseRename(s));
-			parseMap.put("delete", s -> parseDelete(s));
-		}
+		parseMap = new HashMap<>();
+		parseMap.put("start", s -> parseStart(s));
+		parseMap.put("stop", s -> parseStop(s));
+		parseMap.put("describe", s -> parseDescribe(s));
+		parseMap.put("size", s -> parseSize(s));
+		parseMap.put("rename", s -> parseRename(s));
+		parseMap.put("delete", s -> parseDelete(s));
+	}
 	
 	private void parseLog() {
 		taskMap = new HashMap<>();
-		Logger.getInstance().getFileStream().map(Util::getWords).forEach(line -> {
-			if (parseMap.get(line[0]) == null)
-				return;
-			parseMap.get(line[0]).accept(line);
-		});
+		Logger.getInstance().getFileStream().map(Util::getWords)
+			.forEach(line -> {
+				if (parseMap.get(line[0]) == null)
+					return;
+				parseMap.get(line[0]).accept(line);
+			});
 	}
 
 	private void generateTask(String taskName){
@@ -247,13 +256,16 @@ class Summary implements Command {
 			System.err.println("malformed stop");
 			return;
 		}
+
 		String startTask = startLine[1], endTask = endLine[1];
 		if (!startTask.equals(endTask) || !taskMap.containsKey(endTask)) {
 			System.err.println("malformed stop");
 			return;
 		}
+		
 		TaskData data = taskMap.get(startTask);
-		LocalDateTime startTime = LocalDateTime.parse(startLine[2]), endTime = LocalDateTime.parse(endLine[2]);
+		LocalDateTime startTime = LocalDateTime.parse(startLine[2]);
+		LocalDateTime endTime = LocalDateTime.parse(endLine[2]);
 		int timeDelta = (int)startTime.until(endTime, ChronoUnit.SECONDS);
 		if (timeDelta < 0) {
 			System.err.println("Malformed Start/Stop");
@@ -268,9 +280,11 @@ class Summary implements Command {
 			System.err.println("Malformed Describe");
 			return;
 		}
+
 		String taskName = line[1];
 		if (!taskMap.containsKey(taskName))
 			generateTask(taskName);
+
 		TaskData data = taskMap.get(taskName);
 		parseSize(line);
 		data.description = line[3];
@@ -284,9 +298,11 @@ class Summary implements Command {
 			System.err.println("Malformed Size");
 			return;
 		}
+
 		String taskName = line[1];
 		if (!taskMap.containsKey(taskName))
 			generateTask(taskName);
+
 		TaskData data = taskMap.get(taskName);
 		String size = line[2];
 		if (Arrays.asList(sizes).contains(size)) {
@@ -303,7 +319,7 @@ class Summary implements Command {
 			System.err.println("Malformed Rename");
 			return;
 		}
-			taskMap.put(newName, taskMap.remove(oldName));
+		taskMap.put(newName, taskMap.remove(oldName));
 	}
 
 	private void parseDelete(String[] line) {
@@ -315,12 +331,14 @@ class Summary implements Command {
 		taskMap.remove(taskName);
 	}
 
-	private void printOut(String task, String size, String description, int seconds) {
+	private void printOut(String task, String size, 
+							String description, int seconds) {
 		int[] time = Util.convertSecondsToTime(seconds);
  		System.out.println("Summary for size\t:" + task);
 		System.out.println("Size of task\t\t:" + size);
 		System.out.println("Description\t\t:" + description);
-		System.out.println("Time spent on task\t:" + time[0] + ":" + time[1] + ":" + time[2] + "\n");
+		System.out.println("Time spent on task\t:" + time[0] + ":" + time[1] 
+													+ ":" + time[2] + "\n");
 	}
 }
 
@@ -355,8 +373,12 @@ class Delete implements Command {
 	}
 
 	private boolean canDelete() {
-		Map<String, Long> countMap = Logger.getInstance().getFileStream().map(Util::getWords).collect(Collectors.groupingBy(Util::getCommand, Collectors.counting()));
-		return (countMap.getOrDefault("start", 0L) <= countMap.getOrDefault("stop", 0L));
+		Map<String, Long> countMap = Logger.getInstance()
+					.getFileStream().map(Util::getWords)
+					.collect(Collectors.groupingBy(Util::getCommand, 
+													Collectors.counting()));
+		return (countMap.getOrDefault("start", 0L) 
+				<= countMap.getOrDefault("stop", 0L));
 	}
 }
 
