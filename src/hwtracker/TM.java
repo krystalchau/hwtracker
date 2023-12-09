@@ -35,7 +35,7 @@ public class TM {
 }
 
 class BadCommandException extends Exception {
-	BadCommandException() {}
+	BadCommandException() {}	
 }
 
 class Logger {
@@ -410,10 +410,25 @@ class Size implements Command {
 
 class Rename implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 3)
+		if (args.length < 3 || !canRename())
 			throw new BadCommandException();
 		String entry = "rename " + args[1] + " " + args[2] + "\n";
 		Logger.getInstance().writeToFile(entry);
+	}
+
+	private boolean canRename() {
+		int start = 0, stop = -1, i = 0;
+		Scanner scanner = Logger.getInstance().getFileReader();
+		while (scanner.hasNextLine()) {
+			String[] line = Util.getWords(scanner.nextLine());
+			if (line[0].equals("start"))
+				start = i;
+			if (line[0].equals("stop"))
+				stop = i;
+			i++;
+		}
+		scanner.close();
+		return (stop > start);
 	}
 }
 
