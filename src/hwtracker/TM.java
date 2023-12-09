@@ -5,9 +5,11 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.nio.file.Files;
 import java.util.stream.Stream;
+import java.util.stream.Collectors;
 import java.util.Scanner;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.time.LocalDateTime;
@@ -180,10 +182,14 @@ class Describe implements Command {
 }
 
 class Summary implements Command {
-	public class TaskData {
+	private class TaskData {
 		String size = "Not Set";
 		String description = "Not Set";
 		int time = 0;
+
+		String size() {
+			return size;
+		}
 	}
 
 	private String[] sizes = {"S", "M", "L", "XL"};
@@ -194,18 +200,18 @@ class Summary implements Command {
 	public void execute(String[] args) throws BadCommandException {
 		if (parseMap == null)
 			generateParseMap();
-
 		parseLog();
 		if (args.length > 1) {
 			if (Arrays.asList(sizes).contains(args[1])) {
-				printOutputWithSize(args[1]);
+				System.out.println("Summary for size: " + args[1]);
+				printOutput(args[1], null);
 			}
 			else {
-				printOutputWithName(args[1]);
+				printOutput(null, args[1]);
 			}
 		}
 		else {
-			printOutputAll();
+			printOutput(null, null);
 		}
 	}
 
@@ -229,28 +235,35 @@ class Summary implements Command {
 			});
 	}
 
-	private void printOutputWithSize(String size) {
-	System.out.println("Summary for size: " + size);
+	private void printOutput(String size, String name) {
 			taskMap.forEach((task, data) -> {
-				if (data.size.equals(size)) {
+				if (printFilter(size, name, task, data)) {
 					printOut(task, data.size, data.description, data.time);
 				}
 			});
+			printAvgSpentTime();
 	}
 
-	private void printOutputWithName(String name) {
-	System.out.println("Summary for task: " + name);
-		taskMap.forEach((task, data) -> {
-			if (task.equals(name)) {
-				printOut(task, data.size, data.description, data.time);
+	private boolean printFilter(String size, String name, String task, TaskData data) {
+		return (name == null && size == null ||
+				name == null && data.size.equals(size) ||
+				size == null && task.equals(name)
+				);
+	}
+	
+	private void printAvgSpentTime() {
+		Map<String, List<TaskData>> sortedBySizeMap = taskMap.values().stream().collect(Collectors.groupingBy(TaskData::size));
+		sortedBySizeMap.forEach((size, dataList) -> {
+			if (dataList.size() > 1 && Arrays.asList(sizes).contains(size)) {
+				System.err.println("hello");
+				List<Integer> timeStream = dataList.stream().map(data -> data.time).toList();
+				int[] min = Util.convertSecondsToTime(timeStream.stream().min(Integer::compare).get());
+				int[] max = Util.convertSecondsToTime(timeStream.stream().max(Integer::compare).get());
+				int[] avg = Util.convertSecondsToTime((int)timeStream.stream().mapToDouble(i -> i).average().orElse(0));
+				System.out.println("Time Statistics for Size " + size);
+				System.out.println("Min: " + Util.formatTime(min) + "\tMax: " + Util.formatTime(max) + "\tAvg: " + Util.formatTime(avg) + "\n");
+
 			}
-		});
-	}
-
-	private void printOutputAll() {
-		System.out.println("Full Summary");
-		taskMap.forEach((task, data) -> {
-			printOut(task, data.size, data.description, data.time);
 		});
 	}
 
@@ -285,7 +298,7 @@ class Summary implements Command {
 			LocalDateTime startTime = LocalDateTime.parse(startLine[2]);
 			LocalDateTime endTime = LocalDateTime.parse(endLine[2]);
 			int timeDelta = (int)startTime.until(endTime, ChronoUnit.SECONDS);
-			if (timeDelta < 0 || LocalDateTime.now().until(startTime, ChronoUnit.SECONDS) > 0 || LocalDateTime.now().until(endTime, ChronoUnit.SECONDS) < 0) {
+			if (timeDelta < 0 || LocalDateTime.now().until(startTime, ChronoUnit.SECONDS) > 0 || LocalDateTime.now().until(endTime, ChronoUnit.SECONDS) > 0) {
 				System.err.println("Malformed Start/Stop");
 				return;
 			}
@@ -360,8 +373,7 @@ class Summary implements Command {
  		System.out.println("Summary for size\t:" + task);
 		System.out.println("Size of task\t\t:" + size);
 		System.out.println("Description\t\t:" + description);
-		System.out.println("Time spent on task\t:" + time[0] + ":" + time[1] 
-													+ ":" + time[2] + "\n");
+		System.out.println("Time spent on task\t:" + Util.formatTime(time) + "\n");
 	}
 }
 
@@ -421,6 +433,10 @@ class Util {
 		int minutes = seconds % 3600 / 60;
 		seconds = seconds % 60;
 		return new int[] { hours, minutes, seconds };
+	}
+
+	public static String formatTime(int[] time) {
+		return time[0] + ":" + time[1] + ":" + time[2];
 	}
 
 	public static String getCommand(String[] line) {
