@@ -3,19 +3,22 @@ package hwtracker;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
+import java.io.IOException;
+
 import java.nio.file.Files;
+
+import java.time.LocalDateTime;
+import java.time.temporal.*;
+import java.time.format.DateTimeParseException;
+
 import java.util.stream.Stream;
 import java.util.stream.Collectors;
 import java.util.Scanner;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import java.time.LocalDateTime;
-import java.time.temporal.*;
 import java.util.function.Consumer;
-import java.time.format.DateTimeParseException;
 
 public class TM {	
 	public static void main(String[] args) {
@@ -123,17 +126,17 @@ class Start implements Command {
 
 	private boolean canStart() {
 		int start = -1, stop = 0, i = 0;
-			Scanner scanner = Logger.getInstance().getFileReader();
-			while (scanner.hasNextLine()) {
-					String[] line = Util.getWords(scanner.nextLine());
-					if (line[0].equals("start"))
-						start = i;
-					if (line[0].equals("stop"))
-						stop = i;
-					i++;
-				}
-				scanner.close();
-			return (start < stop);
+		Scanner scanner = Logger.getInstance().getFileReader();
+		while (scanner.hasNextLine()) {
+				String[] line = Util.getWords(scanner.nextLine());
+				if (line[0].equals("start"))
+					start = i;
+				if (line[0].equals("stop"))
+					stop = i;
+				i++;
+			}
+			scanner.close();
+		return (start < stop);
 	}
 }
 
@@ -235,13 +238,13 @@ class Summary implements Command {
 	}
 
 	private void printOutput(String size, String name) {
-			taskMap.forEach((task, data) -> {
-				if (printFilter(size, name, task, data)) {
-					printOut(task, data.size, data.description, data.time);
-				}
-			});
-			if (name == null)
-				printAvgSpentTime(size);
+		taskMap.forEach((task, data) -> {
+			if (printFilter(size, name, task, data)) {
+				printOut(task, data.size, data.description, data.time);
+			}
+		});
+		if (name == null)
+			printAvgSpentTime(size);
 	}
 
 	private boolean printFilter(String size, String name, String task, TaskData data) {
@@ -252,16 +255,28 @@ class Summary implements Command {
 	}
 	
 	private void printAvgSpentTime(String size) {
-		Map<String, List<TaskData>> sortedBySizeMap = taskMap.values().stream().collect(Collectors.groupingBy(TaskData::size));
-		sortedBySizeMap.forEach((dataSize, dataList) -> {
-			if (dataList.size() > 1 && Arrays.asList(sizes).contains(dataSize) && (size == null || dataSize.equals(size))) {
-				List<Integer> timeList = dataList.stream().map(data -> data.time).toList();
-				int[] min = Util.convertSecondsToTime(timeList.stream().min(Integer::compare).get());
-				int[] max = Util.convertSecondsToTime(timeList.stream().max(Integer::compare).get());
-				int[] avg = Util.convertSecondsToTime((int)timeList.stream().mapToDouble(i -> i).average().orElse(0));
-				System.out.println("Time Statistics for Size " + dataSize);
-				System.out.println("Min: " + Util.formatTime(min) + "\tMax: " + Util.formatTime(max) + "\tAvg: " + Util.formatTime(avg) + "\n");
+		Map<String, List<TaskData>> sortedBySizeMap = taskMap.values()
+					.stream().collect(Collectors.groupingBy(TaskData::size));
 
+		sortedBySizeMap.forEach((dataSize, dataList) -> {
+			if (dataList.size() > 1 && Arrays.asList(sizes).contains(dataSize) 
+							&& (size == null || dataSize.equals(size))) {
+				List<Integer> timeList = dataList.stream()
+							.map(data -> data.time).toList();
+
+				int[] min = Util.convertSecondsToTime(timeList.stream()
+							.min(Integer::compare).get());
+							
+				int[] max = Util.convertSecondsToTime(timeList.stream()
+							.max(Integer::compare).get());
+
+				int[] avg = Util.convertSecondsToTime((int)timeList.stream()
+							.mapToDouble(i -> i).average().orElse(0));
+
+				System.out.println("Time Statistics for Size " + dataSize);
+				System.out.println("Min: " + Util.formatTime(min) + "\tMax: " 
+											+ Util.formatTime(max) + "\tAvg: " 
+											+ Util.formatTime(avg) + "\n");
 			}
 		});
 	}
@@ -297,7 +312,10 @@ class Summary implements Command {
 			LocalDateTime startTime = LocalDateTime.parse(startLine[2]);
 			LocalDateTime endTime = LocalDateTime.parse(endLine[2]);
 			int timeDelta = (int)startTime.until(endTime, ChronoUnit.SECONDS);
-			if (timeDelta < 0 || LocalDateTime.now().until(startTime, ChronoUnit.SECONDS) > 0 || LocalDateTime.now().until(endTime, ChronoUnit.SECONDS) > 0) {
+			if (timeDelta < 0 || LocalDateTime.now()
+									.until(startTime, ChronoUnit.SECONDS) > 0
+							|| LocalDateTime.now()
+									.until(endTime, ChronoUnit.SECONDS) > 0) {
 				System.err.println("Malformed Start/Stop");
 				return;
 			}
@@ -372,7 +390,8 @@ class Summary implements Command {
  		System.out.println("Summary for size\t:" + task);
 		System.out.println("Size of task\t\t:" + size);
 		System.out.println("Description\t\t:" + description);
-		System.out.println("Time spent on task\t:" + Util.formatTime(time) + "\n");
+		System.out.println("Time spent on task\t:" 
+							+ Util.formatTime(time) + "\n");
 	}
 }
 
