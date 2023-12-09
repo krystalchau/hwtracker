@@ -118,25 +118,14 @@ interface Command {
 
 class Start implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 2 || !canStart())
+		if (args.length < 2 || !canStart() || Arrays.asList(Util.getSizes()).contains(args[1]))
 			throw new BadCommandException();
 		String entry = "start " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canStart() {
-		int start = -1, stop = 0, i = 0;
-		Scanner scanner = Logger.getInstance().getFileReader();
-		while (scanner.hasNextLine()) {
-				String[] line = Util.getWords(scanner.nextLine());
-				if (line[0].equals("start"))
-					start = i;
-				if (line[0].equals("stop"))
-					stop = i;
-				i++;
-			}
-			scanner.close();
-		return (start < stop);
+		return Util.startBeforeStop();
 	}
 }
 
@@ -165,15 +154,13 @@ class Stop implements Command {
 }
 
 class Describe implements Command {
-	private String[] sizes = {"S", "M", "L", "XL"};
 	private String size = "N";
-	
 	public void execute(String[] args) throws BadCommandException {
 		if (args.length < 3)
 			throw new BadCommandException();
 			
 		if (args.length > 3)
-			if (!Arrays.asList(sizes).contains(args[3]))
+			if (!Arrays.asList(Util.getSizes()).contains(args[3]))
 				throw new BadCommandException();
 			else
 				size = args[3];
@@ -194,7 +181,6 @@ class Summary implements Command {
 		}
 	}
 
-	private String[] sizes = {"S", "M", "L", "XL"};
 	private String[] startLine = null;
 	private Map<String, TaskData> taskMap;
 	private Map<String, Consumer<String[]>> parseMap;
@@ -204,7 +190,7 @@ class Summary implements Command {
 			generateParseMap();
 		parseLog();
 		if (args.length > 1) {
-			if (Arrays.asList(sizes).contains(args[1])) {
+			if (Arrays.asList(Util.getSizes()).contains(args[1])) {
 				System.out.println("Summary for size: " + args[1]);
 				printOutput(args[1], null);
 			}
@@ -259,7 +245,7 @@ class Summary implements Command {
 					.stream().collect(Collectors.groupingBy(TaskData::size));
 
 		sortedBySizeMap.forEach((dataSize, dataList) -> {
-			if (dataList.size() > 1 && Arrays.asList(sizes).contains(dataSize) 
+			if (dataList.size() > 1 && Arrays.asList(Util.getSizes()).contains(dataSize) 
 							&& (size == null || dataSize.equals(size))) {
 				List<Integer> timeList = dataList.stream()
 							.map(data -> data.time).toList();
@@ -358,7 +344,7 @@ class Summary implements Command {
 
 		TaskData data = taskMap.get(taskName);
 		String size = line[2];
-		if (Arrays.asList(sizes).contains(size)) {
+		if (Arrays.asList(Util.getSizes()).contains(size)) {
 			data.size = size;
 		}
 		else if (!size.equals("N"))
@@ -396,10 +382,8 @@ class Summary implements Command {
 }
 
 class Size implements Command {
-	String[] sizes = {"S", "M", "L", "XL"};
-
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 3 || !Arrays.asList(sizes).contains(args[2]))
+		if (args.length < 3 || !Arrays.asList(Util.getSizes()).contains(args[2]))
 			throw new BadCommandException();
 		else {
 			String entry = "size " + args[1] + " " + args[2] + "\n";
@@ -410,25 +394,14 @@ class Size implements Command {
 
 class Rename implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 3 || !canRename())
+		if (args.length < 3 || !canRename() || Arrays.asList(Util.getSizes()).contains(args[1]))
 			throw new BadCommandException();
 		String entry = "rename " + args[1] + " " + args[2] + "\n";
 		Logger.getInstance().writeToFile(entry);
 	}
 
 	private boolean canRename() {
-		int start = 0, stop = -1, i = 0;
-		Scanner scanner = Logger.getInstance().getFileReader();
-		while (scanner.hasNextLine()) {
-			String[] line = Util.getWords(scanner.nextLine());
-			if (line[0].equals("start"))
-				start = i;
-			if (line[0].equals("stop"))
-				stop = i;
-			i++;
-		}
-		scanner.close();
-		return (stop > start);
+		return Util.startBeforeStop();
 	}
 }
 
@@ -441,22 +414,15 @@ class Delete implements Command {
 	}
 
 	private boolean canDelete() {
-		int start = 0, stop = -1, i = 0;
-		Scanner scanner = Logger.getInstance().getFileReader();
-		while (scanner.hasNextLine()) {
-			String[] line = Util.getWords(scanner.nextLine());
-			if (line[0].equals("start"))
-				start = i;
-			if (line[0].equals("stop"))
-				stop = i;
-			i++;
-		}
-		scanner.close();
-		return (stop > start);
+		return Util.startBeforeStop();
 	}
 }
 
 class Util {
+	public static String[] getSizes() {
+		String[] sizes = {"S", "M", "L", "XL"};
+		return sizes;
+	}
 	public static String[] getWords(String string) {
 		return string.split("\\s+");
 	}
@@ -474,5 +440,20 @@ class Util {
 
 	public static String getCommand(String[] line) {
 		return line[0];
+	}
+
+	public static boolean startBeforeStop() {
+		int start = -1, stop = 0, i = 0;
+		Scanner scanner = Logger.getInstance().getFileReader();
+		while (scanner.hasNextLine()) {
+			String[] line = Util.getWords(scanner.nextLine());
+			if (line[0].equals("start"))
+				start = i;
+			if (line[0].equals("stop"))
+				stop = i;
+			i++;
+		}
+		scanner.close();
+		return (stop > start);
 	}
 }
