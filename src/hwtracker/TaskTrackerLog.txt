@@ -10,6 +10,6 @@ start b 2023-12-08T09:30:54.662578
 describe buh M hi
 stop b 2023-12-08T13:06:50.969665
 size buh S
-size bu S
+size bu M
 start new 2023-12-08T13:26:18.166066
 stop a 2023-12-08T14:56:10.180408

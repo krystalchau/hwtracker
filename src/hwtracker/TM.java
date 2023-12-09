@@ -241,7 +241,8 @@ class Summary implements Command {
 					printOut(task, data.size, data.description, data.time);
 				}
 			});
-			printAvgSpentTime();
+			if (name == null)
+				printAvgSpentTime();
 	}
 
 	private boolean printFilter(String size, String name, String task, TaskData data) {
@@ -255,11 +256,10 @@ class Summary implements Command {
 		Map<String, List<TaskData>> sortedBySizeMap = taskMap.values().stream().collect(Collectors.groupingBy(TaskData::size));
 		sortedBySizeMap.forEach((size, dataList) -> {
 			if (dataList.size() > 1 && Arrays.asList(sizes).contains(size)) {
-				System.err.println("hello");
-				List<Integer> timeStream = dataList.stream().map(data -> data.time).toList();
-				int[] min = Util.convertSecondsToTime(timeStream.stream().min(Integer::compare).get());
-				int[] max = Util.convertSecondsToTime(timeStream.stream().max(Integer::compare).get());
-				int[] avg = Util.convertSecondsToTime((int)timeStream.stream().mapToDouble(i -> i).average().orElse(0));
+				List<Integer> timeList = dataList.stream().map(data -> data.time).toList();
+				int[] min = Util.convertSecondsToTime(timeList.stream().min(Integer::compare).get());
+				int[] max = Util.convertSecondsToTime(timeList.stream().max(Integer::compare).get());
+				int[] avg = Util.convertSecondsToTime((int)timeList.stream().mapToDouble(i -> i).average().orElse(0));
 				System.out.println("Time Statistics for Size " + size);
 				System.out.println("Min: " + Util.formatTime(min) + "\tMax: " + Util.formatTime(max) + "\tAvg: " + Util.formatTime(avg) + "\n");
 
