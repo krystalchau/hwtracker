@@ -120,12 +120,19 @@ class Start implements Command {
 	}
 
 	private boolean canStart() {
-		Map<String, Long> countMap = Logger.getInstance()
-					.getFileStream().map(Util::getWords)
-					.collect(Collectors.groupingBy(Util::getCommand, 
-													Collectors.counting()));
-		return (countMap.getOrDefault("start", 0L) 
-				<= countMap.getOrDefault("stop", 0L));
+		int start = -1, stop = 0, i = 0;
+			String line;
+			Scanner scanner = Logger.getInstance().getFileReader();
+			while (scanner.hasNextLine()) {
+					line = scanner.nextLine();
+					if (line.contains("start"))
+						start = i;
+					if (line.contains("stop"))
+						stop = i;
+					i++;
+				}
+				scanner.close();
+			return (start < stop);
 	}
 }
 
@@ -373,12 +380,18 @@ class Delete implements Command {
 	}
 
 	private boolean canDelete() {
-		Map<String, Long> countMap = Logger.getInstance()
-					.getFileStream().map(Util::getWords)
-					.collect(Collectors.groupingBy(Util::getCommand, 
-													Collectors.counting()));
-		return (countMap.getOrDefault("start", 0L) 
-				<= countMap.getOrDefault("stop", 0L));
+		int start = 0, stop = -1, i = 0;
+		Scanner scanner = Logger.getInstance().getFileReader();
+		while (scanner.hasNextLine()) {
+			String[] line = Util.getWords(scanner.nextLine());
+			if (line[0].equals("start"))
+				start = i;
+			if (line[0].equals("stop"))
+				stop = i;
+			i++;
+		}
+		scanner.close();
+		return (stop > start);
 	}
 }
 
