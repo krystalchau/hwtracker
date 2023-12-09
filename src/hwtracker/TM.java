@@ -118,7 +118,8 @@ interface Command {
 
 class Start implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 2 || !canStart() || Arrays.asList(Util.getSizes()).contains(args[1]))
+		if (args.length < 2 || !canStart() 
+				|| Arrays.asList(Util.getSizes()).contains(args[1]))
 			throw new BadCommandException();
 		String entry = "start " + args[1] + " " + LocalDateTime.now() + "\n";
 		Logger.getInstance().writeToFile(entry);
@@ -233,7 +234,8 @@ class Summary implements Command {
 			printAvgSpentTime(size);
 	}
 
-	private boolean printFilter(String size, String name, String task, TaskData data) {
+	private boolean printFilter(String size, String name, 
+								String task, TaskData data) {
 		return (name == null && size == null ||
 				name == null && data.size.equals(size) ||
 				size == null && task.equals(name)
@@ -245,7 +247,8 @@ class Summary implements Command {
 					.stream().collect(Collectors.groupingBy(TaskData::size));
 
 		sortedBySizeMap.forEach((dataSize, dataList) -> {
-			if (dataList.size() > 1 && Arrays.asList(Util.getSizes()).contains(dataSize) 
+			if (dataList.size() > 1 
+				&& Arrays.asList(Util.getSizes()).contains(dataSize) 
 							&& (size == null || dataSize.equals(size))) {
 				List<Integer> timeList = dataList.stream()
 							.map(data -> data.time).toList();
@@ -383,7 +386,8 @@ class Summary implements Command {
 
 class Size implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 3 || !Arrays.asList(Util.getSizes()).contains(args[2]))
+		if (args.length < 3 
+				|| !Arrays.asList(Util.getSizes()).contains(args[2]))
 			throw new BadCommandException();
 		else {
 			String entry = "size " + args[1] + " " + args[2] + "\n";
@@ -394,7 +398,8 @@ class Size implements Command {
 
 class Rename implements Command {
 	public void execute(String[] args) throws BadCommandException {
-		if (args.length < 3 || !canRename() || Arrays.asList(Util.getSizes()).contains(args[1]))
+		if (args.length < 3 || !canRename() 
+				|| Arrays.asList(Util.getSizes()).contains(args[1]))
 			throw new BadCommandException();
 		String entry = "rename " + args[1] + " " + args[2] + "\n";
 		Logger.getInstance().writeToFile(entry);
